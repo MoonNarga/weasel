@@ -3,6 +3,26 @@
 
 using namespace weasel;
 
+void StandardLayout::ReserveBackgroundSpace(int left) {
+  if (left <= 0)
+    return;
+  _preeditRect.OffsetRect(left, 0);
+  _auxiliaryRect.OffsetRect(left, 0);
+  _highlightRect.OffsetRect(left, 0);
+  _statusIconRect.OffsetRect(left, 0);
+  _prePageRect.OffsetRect(left, 0);
+  _nextPageRect.OffsetRect(left, 0);
+  for (int i = 0; i < candidates_count && i < MAX_CANDIDATES_COUNT; ++i) {
+    _candidateRects[i].OffsetRect(left, 0);
+    _candidateLabelRects[i].OffsetRect(left, 0);
+    _candidateTextRects[i].OffsetRect(left, 0);
+    _candidateCommentRects[i].OffsetRect(left, 0);
+  }
+  _contentSize.cx += left;
+  _contentRect.right += left;
+  _bgRect.right += left;
+}
+
 std::wstring StandardLayout::GetLabelText(const std::vector<Text>& labels,
                                           int id,
                                           const wchar_t* format) const {

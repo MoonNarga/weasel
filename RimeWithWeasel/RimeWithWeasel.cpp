@@ -1279,6 +1279,23 @@ static void _UpdateUIStyle(RimeConfig* config, UI* ui, bool initialize) {
                  "style/layout/border_width", 0, _abs);
   _RimeGetIntStr(config, "style/layout/margin_x", style.margin_x);
   _RimeGetIntStr(config, "style/layout/margin_y", style.margin_y);
+  _RimeGetIntStr(config, "style/background/image", style.background_image);
+  if (!style.background_image.empty()) {
+    std::filesystem::path path(style.background_image);
+    if (path.is_relative())
+      path = WeaselUserDataPath() / path;
+    style.background_image = path.lexically_normal().wstring();
+  }
+  _RimeGetIntStr(config, "style/background/left", style.background_left);
+  _RimeGetIntStr(config, "style/background/top", style.background_top);
+  _RimeGetIntStr(config, "style/background/right", style.background_right);
+  _RimeGetIntStr(config, "style/background/bottom", style.background_bottom);
+  _RimeGetIntStr(config, "style/background/scale", style.background_scale);
+  _RimeGetIntStr(config, "style/background/padding_left",
+                style.background_padding_left);
+  style.background_scale = (std::clamp)(style.background_scale, 1, 400);
+  style.background_padding_left =
+      (std::clamp)(style.background_padding_left, 0, 2000);
   _RimeGetIntStr(config, "style/layout/spacing", style.spacing, 0, 0, _abs);
   _RimeGetIntStr(config, "style/layout/candidate_spacing",
                  style.candidate_spacing, 0, 0, _abs);

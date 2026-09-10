@@ -56,3 +56,14 @@ arm64x_wrapper/*.dll
 arm64x_wrapper/*.ime
 arm64x_wrapper/*.lib
 arm64x_wrapper/*.exp
+
+# Machine-local dependencies, editor state and generated skin deliverables
+/xmake.local.lua
+/.vscode/
+/boost_*/
+/PerMonitorHighDPIAware.manifest
+/output/background-release/
+/output/imagegen/
+/output/local-tests/
+/output/weasel-background-*.zip
+/output/data/opencc

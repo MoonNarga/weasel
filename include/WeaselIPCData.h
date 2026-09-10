@@ -4,6 +4,7 @@
 #include <vector>
 #include <boost/serialization/vector.hpp>
 #include <boost/serialization/string.hpp>
+#include <boost/serialization/version.hpp>
 
 namespace weasel {
 
@@ -291,6 +292,14 @@ struct UIStyle {
   int client_caps;
   int baseline;
   int linespacing;
+  // Optional desktop background; insets are source pixels, padding is DIP.
+  std::wstring background_image;
+  int background_left = 0;
+  int background_top = 0;
+  int background_right = 0;
+  int background_bottom = 0;
+  int background_scale = 100;
+  int background_padding_left = 0;
 
   UIStyle()
       : font_face(),
@@ -364,6 +373,13 @@ struct UIStyle {
         client_caps(0) {}
   bool operator!=(const UIStyle& st) {
     return (
+        background_image != st.background_image ||
+        background_left != st.background_left ||
+        background_top != st.background_top ||
+        background_right != st.background_right ||
+        background_bottom != st.background_bottom ||
+        background_scale != st.background_scale ||
+        background_padding_left != st.background_padding_left ||
         align_type != st.align_type || antialias_mode != st.antialias_mode ||
         preedit_type != st.preedit_type || layout_type != st.layout_type ||
         vertical_text_left_to_right != st.vertical_text_left_to_right ||
@@ -424,6 +440,7 @@ struct UIStyle {
   }
 };
 }  // namespace weasel
+BOOST_CLASS_VERSION(weasel::UIStyle, 1)
 namespace boost {
 namespace serialization {
 template <typename Archive>
@@ -500,6 +517,15 @@ void serialize(Archive& ar, weasel::UIStyle& s, const unsigned int version) {
   ar & s.client_caps;
   ar & s.baseline;
   ar & s.linespacing;
+  if (version >= 1) {
+    ar & s.background_image;
+    ar & s.background_left;
+    ar & s.background_top;
+    ar & s.background_right;
+    ar & s.background_bottom;
+    ar & s.background_scale;
+    ar & s.background_padding_left;
+  }
 }
 
 template <typename Archive>

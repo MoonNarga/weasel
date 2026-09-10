@@ -21,6 +21,7 @@ class StandardLayout : public Layout {
   /* Layout */
 
   virtual void DoLayout(CDCHandle dc, PDWR pDWR = NULL) = 0;
+  void ReserveBackgroundSpace(int left);
   virtual CSize GetContentSize() const { return _contentSize; }
   virtual CRect GetPreeditRect() const { return _preeditRect; }
   virtual CRect GetAuxiliaryRect() const { return _auxiliaryRect; }

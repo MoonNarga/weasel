@@ -4,6 +4,7 @@
 #include "StandardLayout.h"
 #include "Layout.h"
 #include "GdiplusBlur.h"
+#include "NineSlice.h"
 
 #pragma comment(lib, "d2d1.lib")
 #pragma comment(lib, "dwrite.lib")
@@ -83,6 +84,11 @@ class WeaselPanel
   bool m_mouse_entry = false;
   CPoint m_lastMousePos = {-1, -1};
   void _CreateLayout();
+  bool _LoadBackground();
+  void _DrawBackground(CDCHandle dc, const CRect& rect);
+  std::wstring m_backgroundPath;
+  std::unique_ptr<Gdiplus::Bitmap> m_background;
+  weasel::NineSliceTileCache m_backgroundTiles;
   void _ResizeWindow();
   void _RepositionWindow(const bool& adj = false);
   bool _DrawPreedit(const Text& text, CDCHandle dc, const CRect& rc);

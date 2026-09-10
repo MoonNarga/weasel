@@ -11,6 +11,7 @@
 #include "HorizontalLayout.h"
 #include "FullScreenLayout.h"
 #include "VHorizontalLayout.h"
+#include "NineSlice.h"
 
 // for IDI_ZH, IDI_EN
 #include <resource.h>
@@ -93,10 +94,50 @@ WeaselPanel::WeaselPanel(weasel::UI& ui)
 }
 
 WeaselPanel::~WeaselPanel() {
+  m_backgroundTiles.Reset();
+  m_background.reset();
   Gdiplus::GdiplusShutdown(_m_gdiplusToken);
   delete m_layout;
   m_layout = NULL;
   // pDWR.reset();
+}
+
+bool WeaselPanel::_LoadBackground() {
+  if (m_backgroundPath != m_style.background_image) {
+    m_backgroundTiles.Reset();
+    m_background.reset();
+    m_backgroundPath = m_style.background_image;
+    if (!m_backgroundPath.empty()) {
+      m_background.reset(Gdiplus::Bitmap::FromFile(m_backgroundPath.c_str()));
+      if (!m_background || m_background->GetLastStatus() != Gdiplus::Ok)
+        m_background.reset();
+    }
+  }
+  if (!m_background)
+    return false;
+  int width = m_background->GetWidth(), height = m_background->GetHeight();
+  return m_style.background_left >= 0 && m_style.background_top >= 0 &&
+         m_style.background_right >= 0 && m_style.background_bottom >= 0 &&
+         m_style.background_left < width &&
+         m_style.background_right < width - m_style.background_left &&
+         m_style.background_top < height &&
+         m_style.background_bottom < height - m_style.background_top;
+}
+
+void WeaselPanel::_DrawBackground(CDCHandle dc, const CRect& rect) {
+  if (!_LoadBackground() ||
+      (m_style.layout_type != UIStyle::LAYOUT_HORIZONTAL &&
+       m_style.layout_type != UIStyle::LAYOUT_VERTICAL))
+    return;
+  Gdiplus::Graphics graphics(dc);
+  GraphicsRoundRectPath clip(rect, DPI_SCALE(m_style.round_corner_ex));
+  graphics.SetClip(&clip);
+  DrawNineSlice(graphics, *m_background,
+                Gdiplus::Rect(rect.left, rect.top, rect.Width(), rect.Height()),
+                m_style.background_left, m_style.background_top,
+                m_style.background_right, m_style.background_bottom,
+                m_style.background_scale / 100.0f * dpiScaleLayout,
+                &m_backgroundTiles);
 }
 
 void WeaselPanel::_ResizeWindow() {
@@ -170,6 +211,12 @@ void WeaselPanel::Refresh() {
 
     CDCHandle dc = GetDC();
     m_layout->DoLayout(dc, pDWR);
+    if (_LoadBackground() &&
+        (m_style.layout_type == UIStyle::LAYOUT_HORIZONTAL ||
+         m_style.layout_type == UIStyle::LAYOUT_VERTICAL)) {
+      static_cast<StandardLayout*>(m_layout)->ReserveBackgroundSpace(
+          DPI_SCALE(m_style.background_padding_left));
+    }
     ReleaseDC(dc);
     _ResizeWindow();
     _RepositionWindow();
@@ -1041,6 +1088,7 @@ void WeaselPanel::DoPaint(CDCHandle dc) {
       _HighlightText(memDC, backrc, m_style.back_color, m_style.shadow_color,
                      DPI_SCALE(m_style.round_corner_ex), BackType::BACKGROUND,
                      IsToRoundStruct(), m_style.border_color);
+      _DrawBackground(memDC, backrc);
     }
     if (!m_ctx.aux.str.empty()) {
       if (m_istorepos)

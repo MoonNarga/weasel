@@ -1,0 +1,21 @@
+-- Copy to xmake.local.lua (ignored by Git), then edit your local paths.
+-- This file is included by xmake.lua; define the weasel_deps table below.
+-- Relative paths are resolved from the repository root. Use / on Windows.
+weasel_deps = {
+    -- Optional editor version values. xbuild.bat environment takes precedence.
+    -- file/product may override the derived major.minor.patch.0 string.
+    version = { major = "0", minor = "17", patch = "4" },
+    boost_root = "D:/Libraries/boost_1_84_0",
+    -- Optional: omit to use <boost_root>/stage/lib for every architecture.
+    -- A string selects one shared directory; a table selects by architecture.
+    -- boost_libdir = "D:/Libraries/boost_1_84_0/stage/lib",
+    -- boost_libdir = { x64 = "D:/Libraries/boost/x64", x86 = "D:/Libraries/boost/x86" },
+    rime_root = "librime/dist",
+    -- rime_root supplies headers from <rime_root>/include.
+    -- These overrides select <repository>/lib64 and <repository>/lib,
+    -- NOT subdirectories of rime_root. Both must contain matching rime.lib files
+    -- to build Rime-dependent targets for both architectures.
+    rime_libdir = { x64 = "lib64", x86 = "lib" },
+    -- Other platform libraries (for example WinSparkle).
+    platform_libdir = { x64 = "lib64", x86 = "lib" }
+}

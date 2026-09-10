@@ -67,6 +67,34 @@ build.bat boost data opencc
 build.bat weasel
 ```
 
+### Local dependency paths for xmake
+
+Copy `xmake.local.lua.example` to `xmake.local.lua` and set `boost_root` to an
+external Boost directory. The local file is ignored by Git; only the example is
+shared. It defines a Lua table named `weasel_deps`.
+
+`boost_libdir` defaults to `<boost_root>/stage/lib`. `rime_root` defaults to
+`librime/dist` (with `include` and `lib` beneath it). Override `rime_libdir` and
+`platform_libdir` when using external or architecture-specific libraries. Each
+path may be a string or a table keyed by `x64`, `x86`, `arm`, `arm64`, with an
+optional `default` entry. Relative paths are resolved from the repository root.
+Local settings take precedence over `BOOST_ROOT`; that environment variable
+remains supported when `boost_root` is omitted. No Boost directory inside the
+repository is assumed. Use libraries built for the selected architecture and
+the project's static MSVC runtime (`/MT`).
+
+For editor checks without a Developer Command Prompt, `version` can supply
+`major`, `minor`, `patch` (default `0`), and optional `file` and `product` strings.
+`file` defaults to `major.minor.patch.0`, and `product` defaults to `file`.
+Version environment variables supplied by `xbuild.bat` take precedence.
+VS Code can run `xmake check` without `INCLUDE`; xmake discovers MSVC during
+configuration. Run `xmake f -c -m release -a x64` once if its toolchain cache is stale.
+
+Run `xmake f -c -m release -a x64` after changing dependency paths, then build in
+the existing Visual Studio Developer Command Prompt workflow (`xbuild.bat`).
+The MSBuild workflow continues to use its separate ignored `env.bat` and
+`weasel.props` files.
+
 ### Install and try it live
 
 ```batch
