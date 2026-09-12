@@ -65,5 +65,7 @@ arm64x_wrapper/*.exp
 /output/background-release/
 /output/imagegen/
 /output/local-tests/
+/output/replacement-packages/
+/output/replacement-source/
 /output/weasel-background-*.zip
 /output/data/opencc

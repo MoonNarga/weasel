@@ -97,6 +97,7 @@ STDMETHODIMP WeaselTSF::Activate(ITfThreadMgr* pThreadMgr,
 }
 
 STDMETHODIMP WeaselTSF::Deactivate() {
+  _cand->EndUI();
   m_client.EndSession();
 
   _InitTextEditSink(com_ptr<ITfDocumentMgr>());

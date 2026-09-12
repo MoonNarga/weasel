@@ -160,7 +160,7 @@ STDMETHODIMP CGetTextExtentEditSession::DoEditSession(TfEditCookie ec) {
   com_ptr<ITfInsertAtSelection> pInsertAtSelection;
   com_ptr<ITfRange> pRangeComposition;
   ITfRange* pRange;
-  RECT rc;
+  RECT rc = {};
   BOOL fClipped;
   TF_SELECTION selection;
   ULONG nSelection;
@@ -180,7 +180,12 @@ STDMETHODIMP CGetTextExtentEditSession::DoEditSession(TfEditCookie ec) {
     pRange = selection.range;
   }
 
-  if ((_pContextView->GetTextExt(ec, pRange, &rc, &fClipped)) == S_OK &&
+  HRESULT extentResult = _pContextView->GetTextExt(ec, pRange, &rc, &fClipped);
+  // The game path validates raw coordinates against the real game window;
+  // do not first turn a dummy extent into a plausible desktop-origin caret.
+  if (_pTextService->_HandleGameTextExtent(extentResult, rc))
+    return S_OK;
+  if (extentResult == S_OK &&
       (rc.left != 0 || rc.top != 0)) {
     // get the foreground window pos and check if rc from GetTextExt is out of
     // window

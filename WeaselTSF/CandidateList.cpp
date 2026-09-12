@@ -2,6 +2,7 @@
 
 #include "WeaselTSF.h"
 #include "CandidateList.h"
+#include "GameInputPosition.h"
 #include <KeyEvent.h>
 #include <math.h>
 
@@ -11,6 +12,12 @@ using namespace weasel;
 CCandidateList::CCandidateList(com_ptr<WeaselTSF> pTextService)
     : _ui(make_unique<UI>()), _tsf(pTextService), _pbShow(TRUE) {
   _cRef = 1;
+  wchar_t executable[MAX_PATH] = {};
+  DWORD length = GetModuleFileNameW(nullptr, executable, _countof(executable));
+  if (length && length < _countof(executable)) {
+    const wchar_t* name = wcsrchr(executable, L'\\');
+    _useOwnUI = _wcsicmp(name ? name + 1 : executable, L"dota2.exe") == 0;
+  }
 }
 
 CCandidateList::~CCandidateList() {}
@@ -91,7 +98,7 @@ STDMETHODIMP CCandidateList::GetUpdatedFlags(DWORD* pdwFlags) {
     return E_INVALIDARG;
 
   *pdwFlags = TF_CLUIE_DOCUMENTMGR | TF_CLUIE_COUNT | TF_CLUIE_SELECTION |
-              TF_CLUIE_STRING | TF_CLUIE_CURRENTPAGE;
+              TF_CLUIE_STRING | TF_CLUIE_PAGEINDEX | TF_CLUIE_CURRENTPAGE;
   return S_OK;
 }
 
@@ -209,6 +216,9 @@ void CCandidateList::UpdateUI(const Context& ctx, const Status& status) {
   /// if it is owned by active view window
   //_UpdateOwner();
   _ui->Update(ctx, status);
+  // Position after layout exists, including the first update after Create().
+  if (_useOwnUI && status.composing)
+    _PositionGameUI();
   _UpdateUIElement();
 
   if (status.composing)
@@ -222,17 +232,29 @@ void CCandidateList::UpdateStyle(const UIStyle& sty) {
 }
 
 void CCandidateList::UpdateInputPosition(RECT const& rc) {
+  if (UpdateGameTextExtent(S_OK, rc))
+    return;
   _ui->UpdateInputPosition(rc);
 }
 
+bool CCandidateList::UpdateGameTextExtent(HRESULT result, const RECT& rc) {
+  if (!_useOwnUI)
+    return false;
+  _gameTextResult = result;
+  _gameTextRect = rc;
+  if (_uiStarted)
+    _PositionGameUI();
+  return true;
+}
+
 void CCandidateList::Destroy() {
-  // EndUI();
+  EndUI();
   Show(FALSE);
   _DisposeUIWindow();
 }
 
 void CCandidateList::DestroyAll() {
-  // EndUI();
+  EndUI();
   Show(FALSE);
   _DisposeUIWindowAll();
 }
@@ -253,8 +275,8 @@ HWND CCandidateList::_GetActiveWnd() {
   _pContextDocument = nullptr;
 
   if (pThreadMgr != nullptr && SUCCEEDED(pThreadMgr->GetFocus(&pDocumentMgr)) &&
-      SUCCEEDED(pDocumentMgr->GetTop(&pContext)) &&
-      SUCCEEDED(pContext->GetActiveView(&pContextView))) {
+      pDocumentMgr && SUCCEEDED(pDocumentMgr->GetTop(&pContext)) && pContext &&
+      SUCCEEDED(pContext->GetActiveView(&pContextView)) && pContextView) {
     // Set current context
     _pContextDocument = pContext;
     pContextView->GetWnd(&w);
@@ -266,6 +288,8 @@ HWND CCandidateList::_GetActiveWnd() {
 }
 
 HRESULT CCandidateList::_UpdateUIElement() {
+  if (!_uiStarted || _useOwnUI)
+    return S_OK;
   HRESULT hr = S_OK;
 
   com_ptr<ITfUIElementMgr> pUIElementMgr;
@@ -286,6 +310,23 @@ void CCandidateList::StartUI() {
   if (_uiStarted)
     return;
 
+  _pbShow = TRUE;
+  if (!_ui->uiCallback())
+    _ui->SetUICallBack([this](size_t* const sel, size_t* const hov,
+                              bool* const next, bool* const scroll_next) {
+      _tsf->HandleUICallback(sel, hov, next, scroll_next);
+    });
+
+  // Dota 2's IME manager only renders candidates for recognized profiles.
+  // Use Weasel's desktop candidate window in windowed/borderless mode instead
+  // of handing the UI to the game. No game module or TSF identity is modified.
+  if (_useOwnUI) {
+    _ui->style() = _style;
+    _MakeUIWindow();
+    _uiStarted = true;
+    return;
+  }
+
   com_ptr<ITfThreadMgr> pThreadMgr = _tsf->_GetThreadMgr();
   if (!pThreadMgr) {
     return;
@@ -300,11 +341,6 @@ void CCandidateList::StartUI() {
     return;
   }
 
-  if (!_ui->uiCallback())
-    _ui->SetUICallBack([this](size_t* const sel, size_t* const hov,
-                              bool* const next, bool* const scroll_next) {
-      _tsf->HandleUICallback(sel, hov, next, scroll_next);
-    });
   if (FAILED(pUIElementMgr->BeginUIElement(this, &_pbShow, &uiid)))
     return;
   _uiStarted = true;
@@ -320,16 +356,20 @@ void CCandidateList::EndUI() {
     return;
 
   com_ptr<ITfThreadMgr> pThreadMgr = _tsf->_GetThreadMgr();
-  if (pThreadMgr) {
+  if (pThreadMgr && !_useOwnUI) {
     com_ptr<ITfUIElementMgr> emgr;
     auto hr = pThreadMgr->QueryInterface(&emgr);
-    if (FAILED(hr))
-      return;
-    if (emgr != NULL)
+    if (SUCCEEDED(hr) && emgr != NULL)
       emgr->EndUIElement(uiid);
   }
   _uiStarted = false;
+  _pbShow = TRUE;
+  Show(FALSE);
   _DisposeUIWindow();
+  _pContextDocument = nullptr;
+  _gameWindow = nullptr;
+  _gameTextResult = E_PENDING;
+  _gameTextRect = {};
 }
 
 com_ptr<ITfContext> CCandidateList::GetContextDocument() {
@@ -355,7 +395,45 @@ void CCandidateList::_DisposeUIWindowAll() {
 
 void CCandidateList::_MakeUIWindow() {
   HWND p = _GetActiveWnd();
+  if (_useOwnUI) {
+    _gameWindow = game_input::FindGameWindow(p);
+    p = _gameWindow;
+  }
   _ui->Create(p);
+}
+
+void CCandidateList::_PositionGameUI() {
+  if (!game_input::IsGameWindow(_gameWindow))
+    _gameWindow = game_input::FindGameWindow(_GetActiveWnd());
+  RECT bounds = {};
+  if (!game_input::ClientBounds(_gameWindow, bounds)) {
+    RECT empty = {};
+    game_input::Trace(_gameWindow, _gameTextResult, _gameTextRect,
+                      empty, "no-game-window");
+    return;
+  }
+  RECT position = _gameTextRect;
+  const char* source = "tsf";
+  if (FAILED(_gameTextResult) ||
+      !game_input::UsableTextRect(position, bounds)) {
+    if (game_input::NativeCaret(_gameWindow, bounds, position))
+      source = "win32-caret";
+    else if (game_input::ImmPosition(_gameWindow, bounds, position))
+      source = "imm";
+    else {
+      source = "fallback";
+      LONG x = bounds.left + (bounds.right - bounds.left) / 4;
+      LONG y = bounds.top + (bounds.bottom - bounds.top) * 3 / 4;
+      position = {x, y, x, y + 1};
+    }
+  }
+  _ui->UpdateInputPosition(position);
+  game_input::Trace(_gameWindow, _gameTextResult, _gameTextRect,
+                    position, source);
+}
+
+bool WeaselTSF::_HandleGameTextExtent(HRESULT result, const RECT& rc) {
+  return _cand->UpdateGameTextExtent(result, rc);
 }
 
 void WeaselTSF::_UpdateUI(const Context& ctx, const Status& status) {

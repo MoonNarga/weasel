@@ -1,4 +1,34 @@
-# 背景图片预览工具
+# 小狼毫工具
+
+## 生成程序替换包
+
+Windows PowerShell 5.1 或 PowerShell 7 均可运行。默认生成完整程序包：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\New-WeaselReplacementPackage.ps1 -SourceDir .\output
+```
+
+`SourceDir` 必须包含一套兼容的 `weasel.dll`、`weaselx64.dll`、`WeaselServer.exe`、
+`WeaselDeployer.exe`、`WeaselSetup.exe`、`rime.dll` 和 `WinSparkle.dll`。
+存在旧版 `.ime`、`7z.exe`、`7z.dll`、`curl.exe` 时也会打包。缺少必需文件会报错，不会自动混入安装目录的旧文件。
+如果构建结果位于不同目录，先将要发布的文件集中到一个明确的目录，再指定 `-SourceDir`。
+
+产物位于 `output/replacement-packages`，包含可运行目录、ZIP 和 ZIP 的 SHA256。
+可用 `-OutputDir`、`-PackageName` 自定义输出；已有同名产物不会被覆盖。
+仅替换 64 位 TSF 时，传 `-Profile TsfX64`。打包不需要管理员权限，也不会执行安装。
+
+解压后双击 `Install.cmd` 即可申请权限并安排重启替换，`Verify.cmd` 检查安装结果。
+命令行预览、立即替换、恢复备份和取消待重启操作见 [替换包说明](replacement-package.md)。
+
+开发验证（使用临时目录模拟安装，不修改实际安装或系统注册表）：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\Test-WeaselReplacement.ps1
+```
+
+覆盖完整打包、文件校验、系统目录映射、文件占用时回滚、备份恢复和待重启操作隔离。
+
+## 背景图片预览工具
 
 用 Edge、Chrome 或 Firefox 打开 `background-preview.html` 即可。单个 HTML 可独立复制给其他人，
 不依赖服务器、Node.js、第三方库或 Weasel 安装，图片不会上传。

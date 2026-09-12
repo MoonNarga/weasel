@@ -480,6 +480,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CandidateList.h" />
+    <ClInclude Include="GameInputPosition.h" />
     <ClInclude Include="Compartment.h" />
     <ClInclude Include="ctffunc.h" />
     <ClInclude Include="DisplayAttributeInfo.h" />

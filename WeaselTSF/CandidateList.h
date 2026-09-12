@@ -50,6 +50,7 @@ class CCandidateList : public ITfIntegratableCandidateListUIElement,
   void UpdateUI(const weasel::Context& ctx, const weasel::Status& status);
   void UpdateStyle(const weasel::UIStyle& sty);
   void UpdateInputPosition(RECT const& rc);
+  bool UpdateGameTextExtent(HRESULT result, const RECT& rc);
   void Destroy();
   void DestroyAll();
   void StartUI();
@@ -76,6 +77,7 @@ class CCandidateList : public ITfIntegratableCandidateListUIElement,
   // for CCandidateList::Destroy(), when inputing app exit
   void _DisposeUIWindowAll();
   void _MakeUIWindow();
+  void _PositionGameUI();
 
   std::unique_ptr<weasel::UI> _ui;
   DWORD _cRef;
@@ -86,6 +88,11 @@ class CCandidateList : public ITfIntegratableCandidateListUIElement,
 
   BOOL _pbShow;
   bool _uiStarted = false;
+  // Dota 2 does not recognize Weasel in its built-in IME compatibility table.
+  bool _useOwnUI = false;
+  HWND _gameWindow = nullptr;
+  RECT _gameTextRect = {};
+  HRESULT _gameTextResult = E_PENDING;
   weasel::UIStyle _style;
 
   com_ptr<ITfContext> _pContextDocument;
